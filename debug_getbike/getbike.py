@@ -20,9 +20,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from playwright.sync_api import sync_playwright
-
 AUTH0_DOMAIN = "tracefy.eu.auth0.com"
 APP_CLIENT_ID = "p8FPcTM9ZuvaWoagIL0J9TDOUlEAZycI"
 APP_AUDIENCE = "https://app.pro.tracefy.io"
@@ -117,6 +114,18 @@ def browser_login(config: dict[str, Any]) -> dict[str, Any]:
     """Run Auth0 PKCE login in Chromium and return a token response."""
     email = config.get("email") or os.getenv("TRACEFY_EMAIL")
     password = config.get("password") or os.getenv("TRACEFY_PASSWORD")
+    use_manual = bool(config.get("manual_login", False))
+
+    if use_manual or not email or not password:
+        return manual_login()
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise RuntimeError(
+            "Automatic login needs Playwright. Either install/use Playwright or set manual_login=true."
+        ) from exc
+
     headless = bool(config.get("headless", False))
     keep_open = bool(config.get("keep_browser_open_on_failure", True))
 
@@ -174,6 +183,28 @@ def browser_login(config: dict[str, Any]) -> dict[str, Any]:
                     pass
             context.close()
             raise
+
+
+def manual_login() -> dict[str, Any]:
+    """Run Auth0 PKCE login without third-party Python packages."""
+    verifier = token_urlsafe(64)
+    state = token_urlsafe(32)
+    nonce = token_urlsafe(32)
+    challenge = pkce_challenge(verifier)
+    PENDING_PKCE.write_text(
+        json.dumps({"verifier": verifier, "state": state}, indent=2),
+        encoding="utf-8",
+    )
+
+    print("Open this URL in your browser and log in:")
+    print(build_authorize_url(challenge, state, nonce))
+    print()
+    print("After login, Windows may show that the com.tracefy.auth0:// URL cannot be opened.")
+    callback_url = input("Paste the full callback URL here: ").strip()
+    code = code_from_callback_url(callback_url, expected_state=state)
+    token_response = exchange_code(code, verifier)
+    PENDING_PKCE.unlink(missing_ok=True)
+    return token_response
 
 
 def finish_callback(callback_url: str) -> dict[str, Any]:
@@ -411,6 +442,8 @@ def code_from_callback_url(callback_url: str, *, expected_state: str | None) -> 
 
 def fill_login_if_visible(page: Any, email: str, password: str) -> None:
     """Best-effort fill for Auth0 Universal Login."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
     try:
         page.get_by_label("Email").fill(email, timeout=10_000)
     except PlaywrightTimeoutError:
