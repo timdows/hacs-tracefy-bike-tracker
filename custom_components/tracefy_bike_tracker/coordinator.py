@@ -12,9 +12,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import TracefyApiError, TracefyClient
-from .const import CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN, DOMAIN
+from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_REFRESH_TOKEN,
+    CONF_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+)
 
-SCAN_INTERVAL = timedelta(minutes=5)
 LOGGER = logging.getLogger(__name__)
 
 
@@ -29,7 +34,9 @@ class TracefyDataCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
             hass,
             logger=LOGGER,
             name=DOMAIN,
-            update_interval=SCAN_INTERVAL,
+            update_interval=timedelta(
+                seconds=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+            ),
         )
         self.config_entry = entry
         self.client = TracefyClient(

@@ -14,9 +14,18 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
     ATTR_ACCOUNT_EMAIL,
     ATTR_BIKE_LOCATION,
+    ATTR_BUSINESS_NAME,
+    ATTR_DISTANCE,
+    ATTR_EXTERNAL_VOLTAGE,
+    ATTR_FETCHED_AT,
+    ATTR_FRAME_NUMBER,
     ATTR_IMEI,
+    ATTR_KIWA_CERTIFICATE_NUMBER,
     ATTR_LAST_UPDATE,
+    ATTR_MOVEMENT,
     ATTR_POSITIONED_AT,
+    ATTR_SPEED,
+    ATTR_STARTED_AT,
     DOMAIN,
 )
 from .coordinator import TracefyDataCoordinator
@@ -107,9 +116,18 @@ class TracefyBikeTrackerEntity(CoordinatorEntity[TracefyDataCoordinator], Tracke
 
         return {
             ATTR_LAST_UPDATE: bike.get("last_seen_at") or bike.get("positioned_at"),
-            ATTR_POSITIONED_AT: bike.get("positioned_at"),
             ATTR_ACCOUNT_EMAIL: self._entry.data[CONF_EMAIL],
             ATTR_IMEI: bike.get("imei"),
+            ATTR_SPEED: bike.get("speed"),
+            ATTR_MOVEMENT: bike.get("movement"),
+            ATTR_EXTERNAL_VOLTAGE: bike.get("external_voltage"),
+            ATTR_KIWA_CERTIFICATE_NUMBER: bike.get("kiwa_certificate_number"),
+            ATTR_STARTED_AT: bike.get("started_at"),
+            ATTR_FRAME_NUMBER: bike.get("frame_number"),
+            ATTR_DISTANCE: bike.get("distance"),
+            ATTR_POSITIONED_AT: bike.get("positioned_at"),
+            ATTR_FETCHED_AT: bike.get("fetched_at"),
+            ATTR_BUSINESS_NAME: bike.get("business_name"),
             ATTR_BIKE_LOCATION: {
                 "latitude": latitude,
                 "longitude": longitude,

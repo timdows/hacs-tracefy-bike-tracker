@@ -8,6 +8,7 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from .const import (
@@ -72,7 +73,11 @@ class TracefyClient:
             "/entities/locations",
             body={"entities": location_entities},
         )
-        return build_bike_summary(entities if isinstance(entities, list) else location_entities, locations)
+        return build_bike_summary(
+            entities if isinstance(entities, list) else location_entities,
+            locations,
+            fetched_at=datetime.now(UTC).isoformat(),
+        )
 
     def ensure_token(self) -> None:
         """Ensure the client has a valid access token."""
@@ -223,7 +228,7 @@ def minimal_location_entities(entities: list[Any]) -> list[Any]:
     return minimal
 
 
-def build_bike_summary(entities: list[Any], locations: Any) -> list[dict[str, Any]]:
+def build_bike_summary(entities: list[Any], locations: Any, *, fetched_at: str) -> list[dict[str, Any]]:
     """Build bike summaries from entity and location responses."""
     location_by_imei: dict[str, Any] = {}
     if isinstance(locations, list):
@@ -238,13 +243,25 @@ def build_bike_summary(entities: list[Any], locations: Any) -> list[dict[str, An
         imei = str(entity.get("imei") or "")
         location = location_by_imei.get(imei)
         device_data = location.get("device_data") if isinstance(location, dict) else entity.get("device_data")
+        bike_passport = entity.get("bike_passport")
+        if not isinstance(bike_passport, dict):
+            bike_passport = {}
         coordinates = find_coordinates(device_data) or find_coordinates(location) or find_coordinates(entity)
         bikes.append(
             {
                 "imei": imei or None,
                 "name": entity.get("user_bike_name") or entity.get("name") or imei or "Bike",
                 "last_seen_at": entity.get("last_seen_at"),
-                "positioned_at": device_data.get("positioned_at") if isinstance(device_data, dict) else None,
+                "speed": first_present(location, device_data, keys=("speed",)),
+                "movement": first_present(location, device_data, keys=("movement",)),
+                "external_voltage": first_present(location, keys=("external_voltage",)),
+                "kiwa_certificate_number": bike_passport.get("kiwa_certificate_number"),
+                "started_at": bike_passport.get("started_at"),
+                "frame_number": entity.get("frame_number"),
+                "distance": entity.get("distance"),
+                "positioned_at": first_present(location, device_data, keys=("positioned_at",)),
+                "fetched_at": fetched_at,
+                "business_name": entity.get("business_name"),
                 "latitude": coordinates[0] if coordinates else None,
                 "longitude": coordinates[1] if coordinates else None,
                 "device_data": device_data,
@@ -253,6 +270,17 @@ def build_bike_summary(entities: list[Any], locations: Any) -> list[dict[str, An
             }
         )
     return bikes
+
+
+def first_present(*values: Any, keys: tuple[str, ...]) -> Any:
+    """Return the first present key value from dict-like values."""
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+        for key in keys:
+            if key in value:
+                return value[key]
+    return None
 
 
 def find_coordinates(value: Any) -> tuple[float, float] | None:

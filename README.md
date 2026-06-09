@@ -9,8 +9,17 @@ Entity attributes include:
 - last update
 - account email
 - bike location
-- IMEI
+- imei
+- speed
+- movement
+- external voltage
+- kiwa certificate number
+- started at
+- frame number
+- distance
 - positioned at
+- fetched at
+- business name
 
 ## Installation
 
@@ -66,6 +75,12 @@ debug_getbike/token.json
 ```
 
 Paste that value into the Home Assistant integration setup form.
+
+## Options
+
+After setup, open the integration options to configure the fetch interval.
+
+The interval is in seconds. The default is `300` seconds, with a minimum of `60` seconds.
 
 ## Notes
 
