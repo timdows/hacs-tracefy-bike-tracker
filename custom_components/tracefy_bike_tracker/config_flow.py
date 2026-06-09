@@ -7,10 +7,11 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_EMAIL, CONF_LATITUDE, CONF_LONGITUDE
+from homeassistant.const import CONF_EMAIL
 from homeassistant.data_entry_flow import FlowResult
 
-from .const import CONF_BIKE_NAME, DEFAULT_BIKE_NAME, DOMAIN
+from .api import TracefyApiError, TracefyClient
+from .const import CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN, DOMAIN
 
 
 class TracefyBikeTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -28,17 +29,28 @@ class TracefyBikeTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(user_input[CONF_EMAIL])
             self._abort_if_unique_id_configured()
 
-            return self.async_create_entry(
-                title=user_input[CONF_BIKE_NAME],
-                data=user_input,
-            )
+            try:
+                token = await self.hass.async_add_executor_job(
+                    self._validate_input,
+                    user_input[CONF_EMAIL],
+                    user_input[CONF_REFRESH_TOKEN],
+                )
+            except TracefyApiError:
+                errors["base"] = "cannot_connect"
+            else:
+                return self.async_create_entry(
+                    title=user_input[CONF_EMAIL],
+                    data={
+                        **user_input,
+                        CONF_ACCESS_TOKEN: token.access_token,
+                        CONF_REFRESH_TOKEN: token.refresh_token,
+                    },
+                )
 
         schema = vol.Schema(
             {
                 vol.Required(CONF_EMAIL): str,
-                vol.Required(CONF_BIKE_NAME, default=DEFAULT_BIKE_NAME): str,
-                vol.Required(CONF_LATITUDE, default=0.0): vol.Coerce(float),
-                vol.Required(CONF_LONGITUDE, default=0.0): vol.Coerce(float),
+                vol.Required(CONF_REFRESH_TOKEN): str,
             }
         )
 
@@ -47,3 +59,12 @@ class TracefyBikeTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema,
             errors=errors,
         )
+
+    @staticmethod
+    def _validate_input(email: str, refresh_token: str):
+        """Validate refresh token and return an Auth0 token."""
+        client = TracefyClient(email, refresh_token=refresh_token)
+        token = client.refresh_token(refresh_token)
+        client.token = token
+        client.fetch_bikes()
+        return client.token

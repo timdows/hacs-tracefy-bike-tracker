@@ -3,14 +3,15 @@
     "step": {
       "user": {
         "title": "Tracefy Bike Tracker",
-        "description": "Configure the bike location that should be shown on the Home Assistant map.",
+        "description": "Enter your Tracefy account email and an app refresh token. Auth0 does not allow this app client to exchange only email/password.",
         "data": {
           "email": "Account email",
-          "bike_name": "Bike name",
-          "latitude": "Latitude",
-          "longitude": "Longitude"
+          "refresh_token": "Refresh token"
         }
       }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to Tracefy. Check the refresh token, then try again."
     },
     "abort": {
       "already_configured": "This account is already configured."

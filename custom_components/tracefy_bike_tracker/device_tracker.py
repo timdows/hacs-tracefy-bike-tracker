@@ -2,22 +2,24 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.components.device_tracker import SourceType, TrackerEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_EMAIL, CONF_LATITUDE, CONF_LONGITUDE
+from homeassistant.const import CONF_EMAIL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     ATTR_ACCOUNT_EMAIL,
     ATTR_BIKE_LOCATION,
+    ATTR_IMEI,
     ATTR_LAST_UPDATE,
-    CONF_BIKE_NAME,
+    ATTR_POSITIONED_AT,
     DOMAIN,
 )
+from .coordinator import TracefyDataCoordinator
 
 
 async def async_setup_entry(
@@ -26,26 +28,36 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tracefy Bike Tracker device tracker entities."""
-    async_add_entities([TracefyBikeTrackerEntity(entry)])
+    coordinator: TracefyDataCoordinator = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities(
+        TracefyBikeTrackerEntity(coordinator, entry, bike)
+        for bike in coordinator.data or []
+    )
 
 
-class TracefyBikeTrackerEntity(TrackerEntity):
+class TracefyBikeTrackerEntity(CoordinatorEntity[TracefyDataCoordinator], TrackerEntity):
     """Tracker entity representing a Tracefy bike."""
 
     _attr_has_entity_name = True
     _attr_name = None
     _attr_should_poll = False
 
-    def __init__(self, entry: ConfigEntry) -> None:
+    def __init__(
+        self,
+        coordinator: TracefyDataCoordinator,
+        entry: ConfigEntry,
+        bike: dict[str, Any],
+    ) -> None:
         """Initialize the bike tracker."""
+        super().__init__(coordinator)
         self._entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_bike"
+        self._bike_key = bike_key(bike)
+        self._attr_unique_id = f"{entry.entry_id}_{self._bike_key}"
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
+            "identifiers": {(DOMAIN, self._bike_key)},
             "manufacturer": "Tracefy",
-            "name": entry.data[CONF_BIKE_NAME],
+            "name": bike_name(bike),
         }
-        self._last_update = datetime.now(UTC)
 
     @property
     def source_type(self) -> SourceType:
@@ -53,14 +65,25 @@ class TracefyBikeTrackerEntity(TrackerEntity):
         return SourceType.GPS
 
     @property
-    def latitude(self) -> float:
-        """Return latitude value of the device."""
-        return self._entry.data[CONF_LATITUDE]
+    def available(self) -> bool:
+        """Return if the bike has location coordinates."""
+        return self.bike is not None and self.latitude is not None and self.longitude is not None
 
     @property
-    def longitude(self) -> float:
+    def latitude(self) -> float | None:
+        """Return latitude value of the device."""
+        bike = self.bike
+        if not bike:
+            return None
+        return bike.get("latitude")
+
+    @property
+    def longitude(self) -> float | None:
         """Return longitude value of the device."""
-        return self._entry.data[CONF_LONGITUDE]
+        bike = self.bike
+        if not bike:
+            return None
+        return bike.get("longitude")
 
     @property
     def location_name(self) -> str | None:
@@ -68,16 +91,37 @@ class TracefyBikeTrackerEntity(TrackerEntity):
         return None
 
     @property
+    def bike(self) -> dict[str, Any] | None:
+        """Return the latest bike data for this entity."""
+        for bike in self.coordinator.data or []:
+            if bike_key(bike) == self._bike_key:
+                return bike
+        return None
+
+    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
-        latitude = self._entry.data[CONF_LATITUDE]
-        longitude = self._entry.data[CONF_LONGITUDE]
+        bike = self.bike or {}
+        latitude = bike.get("latitude")
+        longitude = bike.get("longitude")
 
         return {
-            ATTR_LAST_UPDATE: self._last_update.isoformat(),
+            ATTR_LAST_UPDATE: bike.get("last_seen_at") or bike.get("positioned_at"),
+            ATTR_POSITIONED_AT: bike.get("positioned_at"),
             ATTR_ACCOUNT_EMAIL: self._entry.data[CONF_EMAIL],
+            ATTR_IMEI: bike.get("imei"),
             ATTR_BIKE_LOCATION: {
                 "latitude": latitude,
                 "longitude": longitude,
             },
         }
+
+
+def bike_key(bike: dict[str, Any]) -> str:
+    """Return a stable bike key."""
+    return str(bike.get("imei") or bike.get("name") or "bike")
+
+
+def bike_name(bike: dict[str, Any]) -> str:
+    """Return a display name for a bike."""
+    return str(bike.get("name") or bike.get("imei") or "Tracefy Bike")

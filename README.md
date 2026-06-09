@@ -2,15 +2,19 @@
 
 Custom Home Assistant integration for showing a bike location on the Home Assistant map.
 
-This initial version scaffolds the HACS integration and creates one `device_tracker` entity with:
+This integration signs in to the Tracefy app API and creates a `device_tracker` entity for each bike returned by your account.
 
-- Last update
-- Account email
-- Bike location
+Entity attributes include:
 
-The location is configured manually for now. A Tracefy API client can be added later to update it automatically.
+- last update
+- account email
+- bike location
+- IMEI
+- positioned at
 
 ## Installation
+
+### HACS custom repository
 
 1. Add this repository to HACS as a custom repository.
 2. Select the `Integration` category.
@@ -18,3 +22,53 @@ The location is configured manually for now. A Tracefy API client can be added l
 4. Restart Home Assistant.
 5. Add the integration from **Settings > Devices & services**.
 
+### Manual install
+
+1. Copy `custom_components/tracefy_bike_tracker` into your Home Assistant `custom_components` directory.
+2. Restart Home Assistant.
+3. Add the integration from **Settings > Devices & services**.
+
+## Configuration
+
+When adding the integration, enter:
+
+- your Tracefy account email
+- an app refresh token
+
+The integration uses the same app API flow as the Tracefy mobile app:
+
+```text
+Auth0 domain: tracefy.eu.auth0.com
+Auth0 audience: https://app.pro.tracefy.io
+API base: https://app-pro.tracefy.io
+```
+
+No extra Python packages are required by the Home Assistant integration.
+
+### Getting A Refresh Token
+
+Auth0 rejects username/password token exchange for the Tracefy mobile client:
+
+```text
+Grant type 'http://auth0.com/oauth/grant-type/password-realm' not allowed for the client.
+```
+
+Because of that, the integration cannot use only email/password. Use the local debug helper once to create an app token:
+
+```powershell
+python debug_getbike/getbike.py
+```
+
+Then copy the `refresh_token` value from:
+
+```text
+debug_getbike/token.json
+```
+
+Paste that value into the Home Assistant integration setup form.
+
+## Notes
+
+The integration stores the access/refresh token in the Home Assistant config entry and refreshes the access token when needed.
+
+Do not publish Home Assistant diagnostics or logs that contain tokens, bike IMEIs, or exact bike coordinates.
