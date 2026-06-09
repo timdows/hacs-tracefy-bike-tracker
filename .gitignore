@@ -1,0 +1,17 @@
+tracefy-app/*
+debug_browser/config.json
+debug_browser/token*.json
+debug_browser/app_token.json
+debug_browser/pending_pkce.json
+debug_browser/token_from_browser_state.json
+debug_browser/cookies*.json
+debug_browser/network*.json
+debug_browser/*.har
+debug_browser/.user_data/
+debug_getbike/config.json
+debug_getbike/token.json
+debug_getbike/pending_pkce.json
+debug_getbike/output/
+debug_getbike/.user_data/
+__pycache__/
+*.pyc
