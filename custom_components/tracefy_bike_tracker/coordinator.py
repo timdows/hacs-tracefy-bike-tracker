@@ -9,6 +9,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import TracefyApiError, TracefyClient
@@ -50,6 +51,8 @@ class TracefyDataCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
         try:
             bikes = await self.hass.async_add_executor_job(self.client.fetch_bikes)
         except TracefyApiError as err:
+            if is_auth_error(err):
+                raise ConfigEntryAuthFailed(str(err)) from err
             raise UpdateFailed(str(err)) from err
 
         await self._async_persist_tokens()
@@ -69,3 +72,14 @@ class TracefyDataCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
             self.config_entry,
             data={**self.config_entry.data, **updates},
         )
+
+
+def is_auth_error(error: TracefyApiError) -> bool:
+    """Return whether an API error should trigger reauth."""
+    message = str(error).lower()
+    return (
+        "auth0" in message
+        or "refresh token" in message
+        or "access_token" in message
+        or "no password available" in message
+    )

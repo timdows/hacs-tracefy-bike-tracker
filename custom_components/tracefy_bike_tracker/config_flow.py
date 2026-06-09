@@ -73,6 +73,46 @@ class TracefyBikeTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_reauth(self, entry_data: dict[str, Any]) -> FlowResult:
+        """Handle reauth for entries created by older versions."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Ask for a new refresh token."""
+        errors: dict[str, str] = {}
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+
+        if user_input is not None and entry is not None:
+            email = entry.data[CONF_EMAIL]
+            try:
+                token = await self.hass.async_add_executor_job(
+                    self._validate_input,
+                    email,
+                    user_input[CONF_REFRESH_TOKEN],
+                )
+            except TracefyApiError:
+                errors["base"] = "cannot_connect"
+            else:
+                self.hass.config_entries.async_update_entry(
+                    entry,
+                    data={
+                        **entry.data,
+                        CONF_ACCESS_TOKEN: token.access_token,
+                        CONF_REFRESH_TOKEN: token.refresh_token,
+                    },
+                )
+                await self.hass.config_entries.async_reload(entry.entry_id)
+                return self.async_abort(reason="reauth_successful")
+
+        schema = vol.Schema({vol.Required(CONF_REFRESH_TOKEN): str})
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=schema,
+            errors=errors,
+        )
+
     @staticmethod
     def _validate_input(email: str, refresh_token: str):
         """Validate refresh token and return an Auth0 token."""

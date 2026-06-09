@@ -76,6 +76,16 @@ debug_getbike/token.json
 
 Paste that value into the Home Assistant integration setup form.
 
+### Updating From The First Version
+
+The first scaffold version stored only manual latitude/longitude data. After updating to the API-backed version, that old entry does not have a refresh token yet, so no new entities can be created until authentication is updated.
+
+After installing the update and restarting Home Assistant:
+
+1. Go to **Settings > Devices & services > Tracefy Bike Tracker**.
+2. If Home Assistant shows a reauthentication prompt, enter the refresh token from `debug_getbike/token.json`.
+3. If no prompt appears, remove the old Tracefy Bike Tracker integration entry and add it again with your email and refresh token.
+
 ## Options
 
 After setup, open the integration options to configure the fetch interval.

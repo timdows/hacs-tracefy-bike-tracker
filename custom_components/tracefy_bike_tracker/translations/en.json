@@ -14,13 +14,21 @@
         "data": {
           "scan_interval": "Fetch interval in seconds"
         }
+      },
+      "reauth_confirm": {
+        "title": "Tracefy Bike Tracker Reauthentication",
+        "description": "This entry was created before app API support or the saved token is no longer valid. Enter a Tracefy app refresh token.",
+        "data": {
+          "refresh_token": "Refresh token"
+        }
       }
     },
     "error": {
       "cannot_connect": "Could not connect to Tracefy. Check the refresh token, then try again."
     },
     "abort": {
-      "already_configured": "This account is already configured."
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Tracefy authentication was updated."
     }
   }
 }
