@@ -1,0 +1,19 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Tracefy Bike Tracker",
+        "description": "Configure the bike location that should be shown on the Home Assistant map.",
+        "data": {
+          "email": "Account email",
+          "bike_name": "Bike name",
+          "latitude": "Latitude",
+          "longitude": "Longitude"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This account is already configured."
+    }
+  }
+}

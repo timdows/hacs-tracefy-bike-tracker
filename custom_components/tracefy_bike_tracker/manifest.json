@@ -1,0 +1,10 @@
+{
+  "domain": "tracefy_bike_tracker",
+  "name": "Tracefy Bike Tracker",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/custom-components/tracefy-bike-tracker",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "0.1.0"
+}

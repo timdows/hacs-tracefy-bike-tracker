@@ -1,0 +1,6 @@
+{
+  "name": "Tracefy Bike Tracker",
+  "render_readme": true,
+  "domains": ["device_tracker"],
+  "homeassistant": "2024.6.0"
+}
